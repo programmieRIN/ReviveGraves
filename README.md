@@ -1,5 +1,5 @@
 <p align="center">
-<img src="https://cdn.discordapp.com/attachments/364524046353694720/1370330277184016436/image.png?ex=681f1b05&is=681dc985&hm=3c2eecdd3ad4451747527ca75fc6efc9149062d5af689947e23fc06396ce9783&" alt="Logo" width="1000"/>
+<img src="https://media.discordapp.net/attachments/364524046353694720/1370330277184016436/image.png?ex=68528585&is=68513405&hm=ce4857ae5671fe2788a7b36c1e9add26a88d41968e7a814e94aab98ad32ee6db&=&format=webp&quality=lossless&width=1392&height=783" alt="Logo" width="1000"/>
 
 # ReviveGraves For Minecraft 1.21.5
 
