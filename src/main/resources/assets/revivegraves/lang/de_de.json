@@ -1,5 +1,7 @@
 {
   "item.revivegraves.revive_token": "Wiederbelebungsmünze",
-  "item.revivegraves.gravestone": "Grabstein",
-  "block.revivegraves.gravestone": "Grabstein"
+  "block.revivegraves.gravestone": "Grabstein",
+  "itemGroup.revivegraves": "ReviveGraves",
+  "message.revivegraves.gravestone_indestructible": "Dieser Grabstein ist unzerstörbar!",
+  "message.revivegraves.need_token": "Du brauchst eine Wiederbelebungsmünze, um diesen Spieler wiederzubeleben!"
 }
