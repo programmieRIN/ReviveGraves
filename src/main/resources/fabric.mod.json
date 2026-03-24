@@ -3,13 +3,12 @@
 	"id": "revivegraves",
 	"version": "${version}",
 	"name": "ReviveGraves",
-	"description": "W Mod!",
+	"description": "Cooperative death mechanics: gravestones, spectator mode, and revive tokens.",
 	"authors": [
 		"ProgrammieRIN!"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"sources": "https://github.com/LPPC/revive-graves"
 	},
 	"license": "MIT",
 	"icon": "assets/revivegraves/icon.png",
@@ -17,6 +16,9 @@
 	"entrypoints": {
 		"main": [
 			"de.programmierin.revivegraves.ReviveGraves"
+		],
+		"client": [
+			"de.programmierin.revivegraves.ReviveGravesClient"
 		],
 		"fabric-datagen": [
 			"de.programmierin.revivegraves.ReviveGravesDataGenerator"
@@ -31,7 +33,5 @@
 		"java": ">=21",
 		"fabric-api": "*"
 	},
-	"suggests": {
-		"another-mod": "*"
-	}
+	"suggests": {}
 }

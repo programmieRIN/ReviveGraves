@@ -1,5 +1,7 @@
 {
-  "item.revivegraves.revive_token": "Revive_Token",
-  "item.revivegraves.gravestone": "Gravestone",
-  "block.revivegraves.gravestone": "Gravestone"
+  "item.revivegraves.revive_token": "Revive Token",
+  "block.revivegraves.gravestone": "Gravestone",
+  "itemGroup.revivegraves": "ReviveGraves",
+  "message.revivegraves.gravestone_indestructible": "This gravestone is indestructible!",
+  "message.revivegraves.need_token": "You need a Revive Token to revive this player!"
 }

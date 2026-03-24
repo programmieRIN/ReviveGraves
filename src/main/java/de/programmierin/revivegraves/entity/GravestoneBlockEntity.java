@@ -14,6 +14,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.world.GameMode;
 
 import java.util.UUID;
 import java.util.function.Function;
@@ -21,6 +22,7 @@ import java.util.function.Function;
 public class GravestoneBlockEntity extends BlockEntity {
     private UUID owner;
     private UUID hologram;
+    private GameMode originalGameMode;
 
     public GravestoneBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.GRAVESTONE, pos, state);
@@ -37,6 +39,15 @@ public class GravestoneBlockEntity extends BlockEntity {
 
     public UUID getHologram() {
         return hologram;
+    }
+
+    public GameMode getOriginalGameMode() {
+        return originalGameMode;
+    }
+
+    public void setOriginalGameMode(GameMode mode) {
+        this.originalGameMode = mode;
+        markDirty();
     }
 
     public void spawnHologram(ServerWorld world) {
@@ -79,6 +90,16 @@ public class GravestoneBlockEntity extends BlockEntity {
         markDirty();
     }
 
+    public void removeHologram(ServerWorld world) {
+        if (hologram != null) {
+            Entity holo = world.getEntity(hologram);
+            if (holo != null) {
+                holo.discard();
+            }
+            hologram = null;
+        }
+    }
+
     @Override
     public NbtCompound toInitialChunkDataNbt(RegistryWrapper.WrapperLookup registries) {
         return createNbt(registries);
@@ -93,12 +114,34 @@ public class GravestoneBlockEntity extends BlockEntity {
         if (hologram != null) {
             view.putString("Hologram", hologram.toString());
         }
+        if (originalGameMode != null) {
+            view.putString("OriginalGameMode", originalGameMode.name());
+        }
     }
 
     @Override
     protected void readData(net.minecraft.storage.ReadView view) {
         super.readData(view);
-        view.getOptionalString("Owner").ifPresent(u -> this.owner = UUID.fromString(u));
-        view.getOptionalString("Hologram").ifPresent(u -> this.hologram = UUID.fromString(u));
+        view.getOptionalString("Owner").ifPresent(u -> {
+            try {
+                this.owner = UUID.fromString(u);
+            } catch (IllegalArgumentException e) {
+                this.owner = null;
+            }
+        });
+        view.getOptionalString("Hologram").ifPresent(u -> {
+            try {
+                this.hologram = UUID.fromString(u);
+            } catch (IllegalArgumentException e) {
+                this.hologram = null;
+            }
+        });
+        view.getOptionalString("OriginalGameMode").ifPresent(s -> {
+            try {
+                this.originalGameMode = GameMode.valueOf(s);
+            } catch (IllegalArgumentException e) {
+                this.originalGameMode = GameMode.SURVIVAL;
+            }
+        });
     }
 }
