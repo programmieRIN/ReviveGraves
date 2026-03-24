@@ -1,5 +1,6 @@
 package de.programmierin.revivegraves.entity;
 
+import de.programmierin.revivegraves.ReviveGraves;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalFacingBlock;
 import net.minecraft.block.entity.BlockEntity;
@@ -11,17 +12,17 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.world.GameMode;
 
 import java.util.UUID;
 
 public class GravestoneBlockEntity extends BlockEntity {
     private UUID owner;
     private UUID hologram;
-    private final BlockPos pos;
+    private GameMode originalGameMode;
 
     public GravestoneBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.GRAVESTONE, pos, state);
-        this.pos = pos;
     }
 
     public void setOwner(UUID owner) {
@@ -35,6 +36,15 @@ public class GravestoneBlockEntity extends BlockEntity {
 
     public UUID getHologram() {
         return hologram;
+    }
+
+    public void setOriginalGameMode(GameMode mode) {
+        this.originalGameMode = mode;
+        markDirty();
+    }
+
+    public GameMode getOriginalGameMode() {
+        return originalGameMode;
     }
 
     public void spawnHologram(ServerWorld world) {
@@ -61,15 +71,15 @@ public class GravestoneBlockEntity extends BlockEntity {
         stand.readNbt(tag);
         stand.setInvisible(true);
 
-        BlockState blockState = world.getBlockState(pos);
+        BlockState blockState = world.getBlockState(getPos());
         Direction facing = blockState.get(HorizontalFacingBlock.FACING);
         double offset = 0.25;
         double dx = -facing.getOffsetX() * offset;
         double dz = -facing.getOffsetZ() * offset;
 
-        double x = pos.getX() + 0.5 + dx;
-        double y = pos.getY() + 1.1;
-        double z = pos.getZ() + 0.5 + dz;
+        double x = getPos().getX() + 0.5 + dx;
+        double y = getPos().getY() + 1.1;
+        double z = getPos().getZ() + 0.5 + dz;
         stand.refreshPositionAndAngles(x, y, z, 0f, 0f);
 
         world.spawnEntity(stand);
@@ -83,12 +93,35 @@ public class GravestoneBlockEntity extends BlockEntity {
         super.writeNbt(nbt, registries);
         if (owner != null) nbt.putUuid("Owner", owner);
         if (hologram != null) nbt.putUuid("Hologram", hologram);
+        if (originalGameMode != null) nbt.putString("OriginalGameMode", originalGameMode.name());
     }
 
     @Override
     public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
         super.readNbt(nbt, registries);
-        if (nbt.containsUuid("Owner"))    owner    = nbt.getUuid("Owner");
-        if (nbt.containsUuid("Hologram")) hologram = nbt.getUuid("Hologram");
+        if (nbt.containsUuid("Owner")) {
+            try {
+                owner = nbt.getUuid("Owner");
+            } catch (Exception e) {
+                ReviveGraves.LOGGER.warn("Failed to parse Owner UUID from gravestone NBT", e);
+                owner = null;
+            }
+        }
+        if (nbt.containsUuid("Hologram")) {
+            try {
+                hologram = nbt.getUuid("Hologram");
+            } catch (Exception e) {
+                ReviveGraves.LOGGER.warn("Failed to parse Hologram UUID from gravestone NBT", e);
+                hologram = null;
+            }
+        }
+        if (nbt.contains("OriginalGameMode")) {
+            try {
+                originalGameMode = GameMode.valueOf(nbt.getString("OriginalGameMode"));
+            } catch (Exception e) {
+                ReviveGraves.LOGGER.warn("Failed to parse OriginalGameMode from gravestone NBT", e);
+                originalGameMode = null;
+            }
+        }
     }
 }

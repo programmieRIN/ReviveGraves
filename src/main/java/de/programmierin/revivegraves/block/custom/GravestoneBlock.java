@@ -15,6 +15,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.state.StateManager;
+import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
@@ -76,6 +77,8 @@ public class GravestoneBlock extends HorizontalFacingBlock implements BlockEntit
         }
 
         UUID ownerUuid = gbe.getOwner();
+        if (ownerUuid == null) return ActionResult.PASS;
+
         ServerPlayerEntity dead = ((ServerWorld) world)
                 .getServer()
                 .getPlayerManager()
@@ -85,10 +88,19 @@ public class GravestoneBlock extends HorizontalFacingBlock implements BlockEntit
 
             ItemStack main = clicker.getMainHandStack();
             ItemStack off  = clicker.getOffHandStack();
+            boolean hasToken = false;
+            boolean useMain = false;
+
             if (main.getItem() == ModItems.REVIVE_TOKEN) {
-                main.decrement(1);
+                hasToken = true;
+                useMain = true;
             } else if (off.getItem() == ModItems.REVIVE_TOKEN) {
-                off.decrement(1);
+                hasToken = true;
+            }
+
+            if (!hasToken) {
+                clicker.sendMessage(Text.translatable("message.revivegraves.need_token"), false);
+                return ActionResult.PASS;
             }
 
             ServerWorld serverWorld = (ServerWorld) world;
@@ -96,7 +108,16 @@ public class GravestoneBlock extends HorizontalFacingBlock implements BlockEntit
             double y = pos.getY() + 1.0;
             double z = pos.getZ() + 0.5;
             dead.teleport(serverWorld, x, y, z, dead.getYaw(), dead.getPitch());
-            dead.changeGameMode(GameMode.SURVIVAL);
+
+            GameMode originalMode = gbe.getOriginalGameMode();
+            dead.changeGameMode(originalMode != null ? originalMode : GameMode.SURVIVAL);
+
+            // Consume token after successful teleport
+            if (useMain) {
+                main.decrement(1);
+            } else {
+                off.decrement(1);
+            }
 
             serverWorld.spawnParticles(
                     ParticleTypes.TOTEM_OF_UNDYING,
@@ -119,7 +140,6 @@ public class GravestoneBlock extends HorizontalFacingBlock implements BlockEntit
             if (holoId != null) {
                 Entity holo = serverWorld.getEntity(holoId);
                 if (holo != null) {
-
                     holo.discard();
                 }
             }
@@ -129,5 +149,22 @@ public class GravestoneBlock extends HorizontalFacingBlock implements BlockEntit
         }
 
         return super.onUse(state, world, pos, clicker, hit);
+    }
+
+    @Override
+    public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
+        if (!state.isOf(newState.getBlock())) {
+            BlockEntity be = world.getBlockEntity(pos);
+            if (be instanceof GravestoneBlockEntity gbe && world instanceof ServerWorld serverWorld) {
+                UUID holoId = gbe.getHologram();
+                if (holoId != null) {
+                    Entity holo = serverWorld.getEntity(holoId);
+                    if (holo != null) {
+                        holo.discard();
+                    }
+                }
+            }
+        }
+        super.onStateReplaced(state, world, pos, newState, moved);
     }
 }
