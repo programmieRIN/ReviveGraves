@@ -300,6 +300,16 @@ public class ReviveGraves implements ModInitializer {
 				ServerPlayer ghost = server.getPlayerList().getPlayer(uuid);
 				if (ghost == null) continue;
 
+				// Hardcore worlds force the player back to SPECTATOR right after our
+				// AFTER_RESPAWN handler applied ADVENTURE (vanilla handleClientCommand override
+				// runs after PlayerList.respawn returns), which let ghosts fly and phase through
+				// walls. Re-assert the ghost game mode for living (already respawned) ghosts.
+				// Guarded on health so we never touch a still-dead player on the death screen.
+				// setGameMode is a no-op when the mode is already unchanged.
+				if (ghost.getHealth() > 0.0F && ghost.gameMode.getGameModeForPlayer() != GameType.ADVENTURE) {
+					ghost.setGameMode(GameType.ADVENTURE);
+				}
+
 				// Soul particles every 10 ticks
 				if (ModConfig.INSTANCE.ghost.particlesEnabled && tick % 10 == 0) {
 					ServerLevel ghostWorld = (ServerLevel) ghost.level();
