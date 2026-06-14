@@ -1,19 +1,19 @@
 package de.programmierin.revivegraves.item;
 
 import de.programmierin.revivegraves.ReviveGraves;
-import net.minecraft.item.Item;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
 
 public class ModItems {
     public static final Item REVIVE_TOKEN = registerItem("revive_token",
-            new Item(new Item.Settings().registryKey(RegistryKey.of(RegistryKeys.ITEM, Identifier.of(ReviveGraves.MOD_ID, "revive_token")))));
+            new Item(new Item.Properties().setId(ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(ReviveGraves.MOD_ID, "revive_token")))));
 
     private static Item registerItem(String name, Item item) {
-        return Registry.register(Registries.ITEM, Identifier.of(ReviveGraves.MOD_ID, name), item);
+        return Registry.register(BuiltInRegistries.ITEM, Identifier.fromNamespaceAndPath(ReviveGraves.MOD_ID, name), item);
     }
 
     public static void registerModItems() {

@@ -3,7 +3,7 @@
 
 # ReviveGraves
 
-**ReviveGraves** (Fabric 1.21.9) adds cooperative rescue mechanics to your Minecraft server.
+**ReviveGraves** (Fabric 26.1.2) adds cooperative rescue mechanics to your Minecraft server.
 
 ---
 
@@ -25,7 +25,7 @@
   Fully configurable via `config/revivegraves.json` — loot drop chances, start tokens for new players, gravestone expiry timer, ghost speed, slow falling, particles, and more.
 
 - **Custom Advancements**
-  8 unique advancements in a dedicated mod tab — track your deaths, revives, and time spent as a ghost chicken.
+  6 unique advancements in a dedicated mod tab — track your deaths, revives, and time spent as a ghost chicken.
 
 - **Loot Integration**
   Revive Tokens appear naturally in End City treasure chests and Ominous Trial Vaults. New players receive starter tokens on first join (configurable).
@@ -34,7 +34,7 @@
 
 ## Installation
 
-1. Install [Fabric Loader](https://fabricmc.net/) and [Fabric API](https://modrinth.com/mod/fabric-api) for Minecraft 1.21.9
+1. Install [Fabric Loader](https://fabricmc.net/) and [Fabric API](https://modrinth.com/mod/fabric-api) for Minecraft 26.1.2
 2. Download the latest ReviveGraves JAR from [Modrinth](https://modrinth.com/mod/revivegraves) or [Releases](../../releases)
 3. Place the JAR in your `mods/` folder
 4. Launch the game

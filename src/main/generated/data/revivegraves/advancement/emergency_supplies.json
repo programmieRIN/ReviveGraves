@@ -10,7 +10,6 @@
       "translate": "advancements.revivegraves.emergency_supplies.description"
     },
     "icon": {
-      "count": 1,
       "id": "revivegraves:revive_token"
     },
     "title": {

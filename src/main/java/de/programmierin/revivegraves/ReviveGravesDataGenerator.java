@@ -3,7 +3,7 @@ package de.programmierin.revivegraves;
 import net.fabricmc.fabric.api.datagen.v1.DataGeneratorEntrypoint;
 import net.fabricmc.fabric.api.datagen.v1.FabricDataGenerator;
 import de.programmierin.revivegraves.datagen.*;
-import net.minecraft.registry.RegistryBuilder;
+import net.minecraft.core.RegistrySetBuilder;
 
 public class ReviveGravesDataGenerator implements DataGeneratorEntrypoint {
 	@Override
@@ -14,7 +14,7 @@ public class ReviveGravesDataGenerator implements DataGeneratorEntrypoint {
 	}
 
 	@Override
-	public void buildRegistry(RegistryBuilder registryBuilder) {
+	public void buildRegistry(RegistrySetBuilder registryBuilder) {
 
 	}
 }

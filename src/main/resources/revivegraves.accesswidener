@@ -1,12 +1,8 @@
-accessWidener v2 named
+accessWidener v2 official
 
-# EntitySpawnS2CPacket — need to read/modify entity type field
-accessible field net/minecraft/network/packet/s2c/play/EntitySpawnS2CPacket entityType Lnet/minecraft/entity/EntityType;
-mutable field net/minecraft/network/packet/s2c/play/EntitySpawnS2CPacket entityType Lnet/minecraft/entity/EntityType;
-
-# EntityTrackerEntry — access sendPackets for mixin
-accessible method net/minecraft/server/network/EntityTrackerEntry sendPackets (Lnet/minecraft/server/network/ServerPlayerEntity;Ljava/util/function/Consumer;)V
-
-# ServerChunkLoadingManager.EntityTracker — access entity field and listeners
-accessible field net/minecraft/server/world/ServerChunkLoadingManager$EntityTracker entry Lnet/minecraft/server/network/EntityTrackerEntry;
-accessible field net/minecraft/server/world/ServerChunkLoadingManager$EntityTracker entity Lnet/minecraft/entity/Entity;
+# No access wideners are currently required.
+#
+# In 26.1 the ghost-chicken disguise no longer mutates vanilla packet fields or
+# walks ChunkMap.TrackedEntity directly. EntityTrackerEntryMixin injects into
+# ServerEntity#sendPairingData and constructs a fresh ClientboundAddEntityPacket,
+# and the tab-list handling uses an @Accessor mixin — neither needs widened access.

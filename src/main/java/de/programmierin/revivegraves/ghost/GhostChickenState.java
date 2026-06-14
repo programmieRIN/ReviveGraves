@@ -2,26 +2,26 @@ package de.programmierin.revivegraves.ghost;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.entity.attribute.EntityAttributeInstance;
-import net.minecraft.entity.attribute.EntityAttributeModifier;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.World;
+import net.minecraft.world.level.Level;
 import de.programmierin.revivegraves.config.ModConfig;
 
 import java.util.EnumSet;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.GameMode;
-import net.minecraft.world.PersistentState;
-import net.minecraft.world.PersistentStateType;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.resources.Identifier;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 
 import java.util.*;
 
@@ -30,11 +30,11 @@ import java.util.*;
  * Tracks which players are ghosts and stores their gravestone locations
  * for cross-dimension revive support.
  */
-public class GhostChickenState extends PersistentState {
+public class GhostChickenState extends SavedData {
 
-    private static final Identifier SPEED_MODIFIER_ID = Identifier.of("revivegraves", "ghost_chicken_speed");
-    private static final Identifier SCALE_MODIFIER_ID = Identifier.of("revivegraves", "ghost_chicken_scale");
-    private static final Identifier STEP_HEIGHT_MODIFIER_ID = Identifier.of("revivegraves", "ghost_chicken_step");
+    private static final Identifier SPEED_MODIFIER_ID = Identifier.fromNamespaceAndPath("revivegraves", "ghost_chicken_speed");
+    private static final Identifier SCALE_MODIFIER_ID = Identifier.fromNamespaceAndPath("revivegraves", "ghost_chicken_scale");
+    private static final Identifier STEP_HEIGHT_MODIFIER_ID = Identifier.fromNamespaceAndPath("revivegraves", "ghost_chicken_step");
 
     private final Map<UUID, GraveLocation> gravestoneLocations;
     private final Set<UUID> ghostPlayers;
@@ -50,9 +50,9 @@ public class GhostChickenState extends PersistentState {
                 ).apply(instance, GraveLocation::new)
         );
 
-        public ServerWorld resolveWorld(MinecraftServer server) {
-            RegistryKey<World> dimKey = RegistryKey.of(RegistryKeys.WORLD, Identifier.of(dimension()));
-            return server.getWorld(dimKey);
+        public ServerLevel resolveWorld(MinecraftServer server) {
+            ResourceKey<Level> dimKey = ResourceKey.create(Registries.DIMENSION, Identifier.parse(dimension()));
+            return server.getLevel(dimKey);
         }
     }
 
@@ -75,8 +75,8 @@ public class GhostChickenState extends PersistentState {
             ).apply(instance, GhostChickenState::fromEntryList)
     );
 
-    public static final PersistentStateType<GhostChickenState> STATE_TYPE = new PersistentStateType<>(
-            "revivegraves_ghost",
+    public static final SavedDataType<GhostChickenState> STATE_TYPE = new SavedDataType<>(
+            Identifier.withDefaultNamespace("revivegraves_ghost"),
             GhostChickenState::new,
             CODEC,
             null
@@ -124,8 +124,8 @@ public class GhostChickenState extends PersistentState {
      * Retrieves (or creates) the ghost chicken state from the overworld's persistent state manager.
      */
     public static GhostChickenState get(MinecraftServer server) {
-        ServerWorld overworld = server.getOverworld();
-        return overworld.getPersistentStateManager().getOrCreate(STATE_TYPE);
+        ServerLevel overworld = server.overworld();
+        return overworld.getDataStorage().computeIfAbsent(STATE_TYPE);
     }
 
     public boolean isGhost(UUID uuid) {
@@ -139,13 +139,13 @@ public class GhostChickenState extends PersistentState {
     public void addGhost(UUID uuid, String dimension, BlockPos gravestonePos) {
         ghostPlayers.add(uuid);
         gravestoneLocations.put(uuid, new GraveLocation(dimension, gravestonePos));
-        markDirty();
+        setDirty();
     }
 
     public void removeGhost(UUID uuid) {
         ghostPlayers.remove(uuid);
         gravestoneLocations.remove(uuid);
-        markDirty();
+        setDirty();
     }
 
     /**
@@ -154,7 +154,7 @@ public class GhostChickenState extends PersistentState {
      */
     public void setGravestoneExpired(UUID uuid) {
         gravestoneLocations.remove(uuid);
-        markDirty();
+        setDirty();
     }
 
     public Set<UUID> getGhostPlayerUuids() {
@@ -164,49 +164,49 @@ public class GhostChickenState extends PersistentState {
     /**
      * Applies ghost state to a player: Adventure mode, invulnerable, invisible, slow speed.
      */
-    public static void applyGhostState(ServerPlayerEntity player) {
-        player.changeGameMode(GameMode.ADVENTURE);
+    public static void applyGhostState(ServerPlayer player) {
+        player.setGameMode(GameType.ADVENTURE);
         player.setInvulnerable(true);
 
-        player.addStatusEffect(new StatusEffectInstance(
-                StatusEffects.INVISIBILITY,
-                StatusEffectInstance.INFINITE,
+        player.addEffect(new MobEffectInstance(
+                MobEffects.INVISIBILITY,
+                MobEffectInstance.INFINITE_DURATION,
                 0, true, false, false
         ));
 
         if (ModConfig.INSTANCE.ghost.slowFallingEnabled) {
-            player.addStatusEffect(new StatusEffectInstance(
-                    StatusEffects.SLOW_FALLING,
-                    StatusEffectInstance.INFINITE,
+            player.addEffect(new MobEffectInstance(
+                    MobEffects.SLOW_FALLING,
+                    MobEffectInstance.INFINITE_DURATION,
                     0, true, false, false
             ));
         }
 
-        EntityAttributeInstance speedAttr = player.getAttributeInstance(EntityAttributes.MOVEMENT_SPEED);
+        AttributeInstance speedAttr = player.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speedAttr != null) {
             speedAttr.removeModifier(SPEED_MODIFIER_ID);
             double basePlayerSpeed = 0.1;
             double modifier = (ModConfig.INSTANCE.ghost.speedMultiplier * basePlayerSpeed) - basePlayerSpeed;
-            speedAttr.addTemporaryModifier(new EntityAttributeModifier(
-                    SPEED_MODIFIER_ID, modifier, EntityAttributeModifier.Operation.ADD_VALUE
+            speedAttr.addTransientModifier(new AttributeModifier(
+                    SPEED_MODIFIER_ID, modifier, AttributeModifier.Operation.ADD_VALUE
             ));
         }
 
         // Scale player down to chicken size (1.8 * 0.389 = 0.7 height)
-        EntityAttributeInstance scaleAttr = player.getAttributeInstance(EntityAttributes.SCALE);
+        AttributeInstance scaleAttr = player.getAttribute(Attributes.SCALE);
         if (scaleAttr != null) {
             scaleAttr.removeModifier(SCALE_MODIFIER_ID);
-            scaleAttr.addTemporaryModifier(new EntityAttributeModifier(
-                    SCALE_MODIFIER_ID, -0.611, EntityAttributeModifier.Operation.ADD_MULTIPLIED_BASE
+            scaleAttr.addTransientModifier(new AttributeModifier(
+                    SCALE_MODIFIER_ID, -0.611, AttributeModifier.Operation.ADD_MULTIPLIED_BASE
             ));
         }
 
         // Compensate step height so ghost can still walk up slabs/stairs
-        EntityAttributeInstance stepAttr = player.getAttributeInstance(EntityAttributes.STEP_HEIGHT);
+        AttributeInstance stepAttr = player.getAttribute(Attributes.STEP_HEIGHT);
         if (stepAttr != null) {
             stepAttr.removeModifier(STEP_HEIGHT_MODIFIER_ID);
-            stepAttr.addTemporaryModifier(new EntityAttributeModifier(
-                    STEP_HEIGHT_MODIFIER_ID, 0.6, EntityAttributeModifier.Operation.ADD_VALUE
+            stepAttr.addTransientModifier(new AttributeModifier(
+                    STEP_HEIGHT_MODIFIER_ID, 0.6, AttributeModifier.Operation.ADD_VALUE
             ));
         }
 
@@ -214,22 +214,22 @@ public class GhostChickenState extends PersistentState {
         // (needed for gravestone skull rendering on other clients).
         // DON'T remove from player list — just set listed=false via UPDATE_LISTED.
         // This keeps the GameProfile available for skin resolution.
-        MinecraftServer server = player.getEntityWorld().getServer();
+        MinecraftServer server = player.level().getServer();
         if (server != null) {
             // Create UPDATE_LISTED packet with listed=false
-            PlayerListS2CPacket unlistPacket = new PlayerListS2CPacket(
-                    EnumSet.of(PlayerListS2CPacket.Action.UPDATE_LISTED), List.of(player));
+            ClientboundPlayerInfoUpdatePacket unlistPacket = new ClientboundPlayerInfoUpdatePacket(
+                    EnumSet.of(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_LISTED), List.of(player));
             // entryFromPlayer creates entries with listed=true, override to false
             var accessor = (de.programmierin.revivegraves.mixin.PlayerListS2CPacketAccessor) (Object) unlistPacket;
-            List<PlayerListS2CPacket.Entry> unlisted = accessor.revivegraves$getEntries().stream()
-                    .map(e -> new PlayerListS2CPacket.Entry(
+            List<ClientboundPlayerInfoUpdatePacket.Entry> unlisted = accessor.revivegraves$getEntries().stream()
+                    .map(e -> new ClientboundPlayerInfoUpdatePacket.Entry(
                             e.profileId(), e.profile(), false, e.latency(),
                             e.gameMode(), e.displayName(), e.showHat(), e.listOrder(), e.chatSession()))
                     .toList();
             accessor.revivegraves$setEntries(unlisted);
 
-            for (ServerPlayerEntity onlinePlayer : server.getPlayerManager().getPlayerList()) {
-                onlinePlayer.networkHandler.sendPacket(unlistPacket);
+            for (ServerPlayer onlinePlayer : server.getPlayerList().getPlayers()) {
+                onlinePlayer.connection.send(unlistPacket);
             }
         }
     }
@@ -237,34 +237,34 @@ public class GhostChickenState extends PersistentState {
     /**
      * Removes ghost state from a player: removes invulnerability, invisibility, and speed modifier.
      */
-    public static void removeGhostState(ServerPlayerEntity player) {
+    public static void removeGhostState(ServerPlayer player) {
         player.setInvulnerable(false);
-        player.removeStatusEffect(StatusEffects.INVISIBILITY);
-        player.removeStatusEffect(StatusEffects.SLOW_FALLING);
+        player.removeEffect(MobEffects.INVISIBILITY);
+        player.removeEffect(MobEffects.SLOW_FALLING);
 
-        EntityAttributeInstance speedAttr = player.getAttributeInstance(EntityAttributes.MOVEMENT_SPEED);
+        AttributeInstance speedAttr = player.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speedAttr != null) {
             speedAttr.removeModifier(SPEED_MODIFIER_ID);
         }
 
-        EntityAttributeInstance scaleAttr = player.getAttributeInstance(EntityAttributes.SCALE);
+        AttributeInstance scaleAttr = player.getAttribute(Attributes.SCALE);
         if (scaleAttr != null) {
             scaleAttr.removeModifier(SCALE_MODIFIER_ID);
         }
 
-        EntityAttributeInstance stepAttr = player.getAttributeInstance(EntityAttributes.STEP_HEIGHT);
+        AttributeInstance stepAttr = player.getAttribute(Attributes.STEP_HEIGHT);
         if (stepAttr != null) {
             stepAttr.removeModifier(STEP_HEIGHT_MODIFIER_ID);
         }
 
         // Re-list player in tab (set listed=true)
-        MinecraftServer server = player.getEntityWorld().getServer();
+        MinecraftServer server = player.level().getServer();
         if (server != null) {
-            PlayerListS2CPacket relistPacket = new PlayerListS2CPacket(
-                    EnumSet.of(PlayerListS2CPacket.Action.UPDATE_LISTED), List.of(player));
+            ClientboundPlayerInfoUpdatePacket relistPacket = new ClientboundPlayerInfoUpdatePacket(
+                    EnumSet.of(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_LISTED), List.of(player));
             // Entry from player will have listed=true by default — which is what we want
-            for (ServerPlayerEntity onlinePlayer : server.getPlayerManager().getPlayerList()) {
-                onlinePlayer.networkHandler.sendPacket(relistPacket);
+            for (ServerPlayer onlinePlayer : server.getPlayerList().getPlayers()) {
+                onlinePlayer.connection.send(relistPacket);
             }
         }
     }

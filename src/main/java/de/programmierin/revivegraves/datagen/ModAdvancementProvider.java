@@ -4,65 +4,65 @@ import de.programmierin.revivegraves.ReviveGraves;
 import de.programmierin.revivegraves.advancement.ModAdvancements;
 import de.programmierin.revivegraves.block.ModBlocks;
 import de.programmierin.revivegraves.item.ModItems;
-import net.fabricmc.fabric.api.datagen.v1.FabricDataOutput;
+import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricAdvancementProvider;
-import net.minecraft.advancement.Advancement;
-import net.minecraft.advancement.AdvancementCriterion;
-import net.minecraft.advancement.AdvancementEntry;
-import net.minecraft.advancement.AdvancementFrame;
-import net.minecraft.advancement.criterion.Criteria;
-import net.minecraft.advancement.criterion.ImpossibleCriterion;
-import net.minecraft.item.ItemConvertible;
-import net.minecraft.item.Items;
-import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.AdvancementType;
+import net.minecraft.advancements.Criterion;
+import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.advancements.criterion.ImpossibleTrigger;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ItemLike;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class ModAdvancementProvider extends FabricAdvancementProvider {
 
-	public ModAdvancementProvider(FabricDataOutput output, CompletableFuture<RegistryWrapper.WrapperLookup> registryLookup) {
+	public ModAdvancementProvider(FabricPackOutput output, CompletableFuture<HolderLookup.Provider> registryLookup) {
 		super(output, registryLookup);
 	}
 
 	@Override
-	public void generateAdvancement(RegistryWrapper.WrapperLookup wrapperLookup, Consumer<AdvancementEntry> consumer) {
+	public void generateAdvancement(HolderLookup.Provider wrapperLookup, Consumer<AdvancementHolder> consumer) {
 		// Root — creates the mod tab with soul sand background
-		AdvancementEntry root = Advancement.Builder.create()
+		AdvancementHolder root = Advancement.Builder.advancement()
 				.display(
-						ModBlocks.GRAVESTONE_ITEM.getDefaultStack(),
-						Text.translatable("advancements.revivegraves.root.title"),
-						Text.translatable("advancements.revivegraves.root.description"),
-						Identifier.of(ReviveGraves.MOD_ID, "gui/advancements/backgrounds/soul_sand"),
-						AdvancementFrame.TASK,
+						ModBlocks.GRAVESTONE_ITEM,
+						Component.translatable("advancements.revivegraves.root.title"),
+						Component.translatable("advancements.revivegraves.root.description"),
+						Identifier.fromNamespaceAndPath(ReviveGraves.MOD_ID, "gui/advancements/backgrounds/soul_sand"),
+						AdvancementType.TASK,
 						false, // showToast
 						false, // announceToChat
 						false  // hidden
 				)
-				.criterion("granted", new AdvancementCriterion<>(Criteria.IMPOSSIBLE, new ImpossibleCriterion.Conditions()))
-				.build(consumer, ModAdvancements.ROOT.toString());
+				.addCriterion("granted", new Criterion<>(CriteriaTriggers.IMPOSSIBLE, new ImpossibleTrigger.TriggerInstance()))
+				.save(consumer, ModAdvancements.ROOT.toString());
 
-		AdvancementEntry emergencySupplies = advancement(consumer, root, ModItems.REVIVE_TOKEN, ModAdvancements.EMERGENCY_SUPPLIES, AdvancementFrame.TASK);
-		AdvancementEntry firstFall = advancement(consumer, root, Items.SKELETON_SKULL, ModAdvancements.FIRST_FALL, AdvancementFrame.TASK);
-		advancement(consumer, firstFall, Items.TOTEM_OF_UNDYING, ModAdvancements.FREQUENT_FLYER, AdvancementFrame.GOAL);
-		AdvancementEntry lingeringSpirit = advancement(consumer, firstFall, Items.SOUL_LANTERN, ModAdvancements.LINGERING_SPIRIT, AdvancementFrame.GOAL);
-		advancement(consumer, lingeringSpirit, Items.SOUL_CAMPFIRE, ModAdvancements.ETERNAL_HAUNTING, AdvancementFrame.CHALLENGE);
-		AdvancementEntry helpingHand = advancement(consumer, root, Items.GOLDEN_APPLE, ModAdvancements.HELPING_HAND, AdvancementFrame.TASK);
-		advancement(consumer, helpingHand, Items.ENCHANTED_GOLDEN_APPLE, ModAdvancements.MEDIC, AdvancementFrame.CHALLENGE);
+		AdvancementHolder emergencySupplies = advancement(consumer, root, ModItems.REVIVE_TOKEN, ModAdvancements.EMERGENCY_SUPPLIES, AdvancementType.TASK);
+		AdvancementHolder firstFall = advancement(consumer, root, Items.SKELETON_SKULL, ModAdvancements.FIRST_FALL, AdvancementType.TASK);
+		advancement(consumer, firstFall, Items.TOTEM_OF_UNDYING, ModAdvancements.FREQUENT_FLYER, AdvancementType.GOAL);
+		AdvancementHolder lingeringSpirit = advancement(consumer, firstFall, Items.SOUL_LANTERN, ModAdvancements.LINGERING_SPIRIT, AdvancementType.GOAL);
+		advancement(consumer, lingeringSpirit, Items.SOUL_CAMPFIRE, ModAdvancements.ETERNAL_HAUNTING, AdvancementType.CHALLENGE);
+		AdvancementHolder helpingHand = advancement(consumer, root, Items.GOLDEN_APPLE, ModAdvancements.HELPING_HAND, AdvancementType.TASK);
+		advancement(consumer, helpingHand, Items.ENCHANTED_GOLDEN_APPLE, ModAdvancements.MEDIC, AdvancementType.CHALLENGE);
 	}
 
-	private static AdvancementEntry advancement(Consumer<AdvancementEntry> consumer,
-			AdvancementEntry parent, ItemConvertible icon, Identifier id, AdvancementFrame frame) {
+	private static AdvancementHolder advancement(Consumer<AdvancementHolder> consumer,
+			AdvancementHolder parent, ItemLike icon, Identifier id, AdvancementType frame) {
 		String key = "advancements." + id.getNamespace() + "." + id.getPath();
-		return Advancement.Builder.create()
+		return Advancement.Builder.advancement()
 				.parent(parent)
-				.display(icon.asItem().getDefaultStack(),
-						Text.translatable(key + ".title"),
-						Text.translatable(key + ".description"),
+				.display(icon,
+						Component.translatable(key + ".title"),
+						Component.translatable(key + ".description"),
 						null, frame, true, true, false)
-				.criterion("granted", new AdvancementCriterion<>(Criteria.IMPOSSIBLE, new ImpossibleCriterion.Conditions()))
-				.build(consumer, id.toString());
+				.addCriterion("granted", new Criterion<>(CriteriaTriggers.IMPOSSIBLE, new ImpossibleTrigger.TriggerInstance()))
+				.save(consumer, id.toString());
 	}
 }

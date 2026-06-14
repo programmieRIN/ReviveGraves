@@ -1,22 +1,22 @@
 package de.programmierin.revivegraves.item;
 
 import de.programmierin.revivegraves.ReviveGraves;
-import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
-import net.minecraft.item.ItemGroup;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.ItemStack;
 
 public class ModItemGroups {
 
-    public static final ItemGroup REVIVEGRAVES_GROUP = Registry.register(Registries.ITEM_GROUP,
-            Identifier.of(ReviveGraves.MOD_ID, "revivegraves"),
-            FabricItemGroup.builder().icon(() -> new ItemStack(ModItems.REVIVE_TOKEN))
-                    .displayName(Text.translatable("itemGroup.revivegraves"))
-                    .entries((displayContext, entries) -> {
-                        entries.add(ModItems.REVIVE_TOKEN);
+    public static final CreativeModeTab REVIVEGRAVES_GROUP = Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB,
+            Identifier.fromNamespaceAndPath(ReviveGraves.MOD_ID, "revivegraves"),
+            FabricCreativeModeTab.builder().icon(() -> new ItemStack(ModItems.REVIVE_TOKEN))
+                    .title(Component.translatable("itemGroup.revivegraves"))
+                    .displayItems((displayContext, entries) -> {
+                        entries.accept(ModItems.REVIVE_TOKEN);
                     }).build());
 
     public static void registerItemGroups() {

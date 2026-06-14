@@ -1,37 +1,37 @@
 package de.programmierin.revivegraves.entity;
 
 import de.programmierin.revivegraves.ReviveGraves;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.HorizontalFacingBlock;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.SpawnReason;
-import net.minecraft.entity.decoration.ArmorStandEntity;
-import net.minecraft.inventory.StackWithSlot;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.GameMode;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityProcessor;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.ItemStackWithSlot;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.network.chat.Component;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.GameType;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Function;
 
 public class GravestoneBlockEntity extends BlockEntity {
     private UUID owner;
     private String ownerName;
     private UUID hologram;
-    private GameMode originalGameMode;
+    private GameType originalGameMode;
     private String skinTextureValue;
     private String skinTextureSignature;
     private long creationTick = -1;
-    private List<StackWithSlot> storedItems = new ArrayList<>();
+    private List<ItemStackWithSlot> storedItems = new ArrayList<>();
     private int storedXp = 0;
 
     public GravestoneBlockEntity(BlockPos pos, BlockState state) {
@@ -40,16 +40,16 @@ public class GravestoneBlockEntity extends BlockEntity {
 
     public void setOwner(UUID owner) {
         this.owner = owner;
-        markDirty();
-        if (getWorld() != null && !getWorld().isClient()) {
-            getWorld().updateListeners(getPos(), getCachedState(), getCachedState(), 3);
+        setChanged();
+        if (getLevel() != null && !getLevel().isClientSide()) {
+            getLevel().sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
         }
     }
 
     public void setOwnerName(String ownerName) {
         this.ownerName = ownerName != null && ownerName.length() > 16
                 ? ownerName.substring(0, 16) : ownerName;
-        markDirty();
+        setChanged();
     }
 
     public String getOwnerName() {
@@ -64,25 +64,25 @@ public class GravestoneBlockEntity extends BlockEntity {
         return hologram;
     }
 
-    public void discardHologram(ServerWorld world) {
+    public void discardHologram(ServerLevel world) {
         if (hologram == null) return;
         Entity holo = world.getEntity(hologram);
         if (holo != null) holo.discard();
     }
 
-    public GameMode getOriginalGameMode() {
+    public GameType getOriginalGameMode() {
         return originalGameMode;
     }
 
-    public void setOriginalGameMode(GameMode mode) {
+    public void setOriginalGameMode(GameType mode) {
         this.originalGameMode = mode;
-        markDirty();
+        setChanged();
     }
 
     public void setSkinTexture(String value, String signature) {
         this.skinTextureValue = value;
         this.skinTextureSignature = signature;
-        markDirty();
+        setChanged();
     }
 
     public String getSkinTextureValue() {
@@ -99,16 +99,16 @@ public class GravestoneBlockEntity extends BlockEntity {
 
     public void setCreationTick(long tick) {
         this.creationTick = tick;
-        markDirty();
+        setChanged();
     }
 
-    public List<StackWithSlot> getStoredItems() {
+    public List<ItemStackWithSlot> getStoredItems() {
         return storedItems;
     }
 
-    public void setStoredItems(List<StackWithSlot> items) {
+    public void setStoredItems(List<ItemStackWithSlot> items) {
         this.storedItems = items != null ? new ArrayList<>(items) : new ArrayList<>();
-        markDirty();
+        setChanged();
     }
 
     public int getStoredXp() {
@@ -117,19 +117,19 @@ public class GravestoneBlockEntity extends BlockEntity {
 
     public void setStoredXp(int xp) {
         this.storedXp = xp;
-        markDirty();
+        setChanged();
     }
 
-    public void spawnHologram(ServerWorld world) {
+    public void spawnHologram(ServerLevel world) {
         if (owner == null || hologram != null) return;
 
-        ServerPlayerEntity player = world.getServer()
-                .getPlayerManager()
+        ServerPlayer player = world.getServer()
+                .getPlayerList()
                 .getPlayer(owner);
         if (player == null) return;
         String name = player.getGameProfile().name();
 
-        NbtCompound tag = new NbtCompound();
+        CompoundTag tag = new CompoundTag();
         tag.putString("id", "minecraft:armor_stand");
         tag.putBoolean("Invisible", true);
         tag.putBoolean("NoGravity", true);
@@ -138,30 +138,30 @@ public class GravestoneBlockEntity extends BlockEntity {
         tag.putBoolean("NoBasePlate", true);
         tag.putBoolean("Marker", true);
 
-        Entity loaded = EntityType.loadEntityWithPassengers(tag, world, SpawnReason.TRIGGERED, Function.identity());
-        if (!(loaded instanceof ArmorStandEntity stand)) return;
+        Entity loaded = EntityType.loadEntityRecursive(tag, world, EntitySpawnReason.TRIGGERED, EntityProcessor.NOP);
+        if (!(loaded instanceof ArmorStand stand)) return;
 
-        stand.setCustomName(Text.literal(name));
+        stand.setCustomName(Component.literal(name));
         stand.setCustomNameVisible(true);
 
-        double x = getPos().getX() + 0.5;
-        double y = getPos().getY() + 0.8;
-        double z = getPos().getZ() + 0.5;
-        stand.refreshPositionAndAngles(x, y, z, 0f, 0f);
+        double x = getBlockPos().getX() + 0.5;
+        double y = getBlockPos().getY() + 0.8;
+        double z = getBlockPos().getZ() + 0.5;
+        stand.snapTo(x, y, z, 0f, 0f);
 
-        world.spawnEntity(stand);
-        this.hologram = stand.getUuid();
-        markDirty();
+        world.addFreshEntity(stand);
+        this.hologram = stand.getUUID();
+        setChanged();
     }
 
     @Override
-    public NbtCompound toInitialChunkDataNbt(RegistryWrapper.WrapperLookup registries) {
-        return createNbt(registries);
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        return saveWithoutMetadata(registries);
     }
 
     @Override
-    protected void writeData(net.minecraft.storage.WriteView view) {
-        super.writeData(view);
+    protected void saveAdditional(net.minecraft.world.level.storage.ValueOutput view) {
+        super.saveAdditional(view);
         if (owner != null) {
             view.putString("Owner", owner.toString());
         }
@@ -184,9 +184,9 @@ public class GravestoneBlockEntity extends BlockEntity {
             view.putString("CreationTick", String.valueOf(creationTick));
         }
         if (!storedItems.isEmpty()) {
-            net.minecraft.storage.WriteView.ListAppender<StackWithSlot> list =
-                    view.getListAppender("StoredItems", StackWithSlot.CODEC);
-            for (StackWithSlot item : storedItems) {
+            net.minecraft.world.level.storage.ValueOutput.TypedOutputList<ItemStackWithSlot> list =
+                    view.list("StoredItems", ItemStackWithSlot.CODEC);
+            for (ItemStackWithSlot item : storedItems) {
                 list.add(item);
             }
         }
@@ -196,47 +196,47 @@ public class GravestoneBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void readData(net.minecraft.storage.ReadView view) {
-        super.readData(view);
-        view.getOptionalString("Owner").ifPresent(u -> {
+    protected void loadAdditional(net.minecraft.world.level.storage.ValueInput view) {
+        super.loadAdditional(view);
+        view.getString("Owner").ifPresent(u -> {
             try {
                 this.owner = UUID.fromString(u);
             } catch (IllegalArgumentException e) {
                 ReviveGraves.LOGGER.warn("Invalid Owner UUID in gravestone NBT: {}", u);
             }
         });
-        view.getOptionalString("OwnerName").ifPresent(n ->
+        view.getString("OwnerName").ifPresent(n ->
             this.ownerName = n.length() > 16 ? n.substring(0, 16) : n
         );
-        view.getOptionalString("Hologram").ifPresent(u -> {
+        view.getString("Hologram").ifPresent(u -> {
             try {
                 this.hologram = UUID.fromString(u);
             } catch (IllegalArgumentException e) {
                 ReviveGraves.LOGGER.warn("Invalid Hologram UUID in gravestone NBT: {}", u);
             }
         });
-        view.getOptionalString("OriginalGameMode").ifPresent(g -> {
+        view.getString("OriginalGameMode").ifPresent(g -> {
             try {
-                this.originalGameMode = GameMode.valueOf(g);
+                this.originalGameMode = GameType.valueOf(g);
             } catch (IllegalArgumentException e) {
                 ReviveGraves.LOGGER.warn("Invalid GameMode in gravestone NBT: {}", g);
             }
         });
-        view.getOptionalString("SkinTexture").ifPresent(v -> this.skinTextureValue = v);
-        view.getOptionalString("SkinSignature").ifPresent(v -> this.skinTextureSignature = v);
-        view.getOptionalString("CreationTick").ifPresent(t -> {
+        view.getString("SkinTexture").ifPresent(v -> this.skinTextureValue = v);
+        view.getString("SkinSignature").ifPresent(v -> this.skinTextureSignature = v);
+        view.getString("CreationTick").ifPresent(t -> {
             try {
                 this.creationTick = Long.parseLong(t);
             } catch (NumberFormatException e) {
                 ReviveGraves.LOGGER.warn("Invalid CreationTick in gravestone NBT: {}", t);
             }
         });
-        view.getOptionalTypedListView("StoredItems", StackWithSlot.CODEC).ifPresent(list -> {
+        view.list("StoredItems", ItemStackWithSlot.CODEC).ifPresent(list -> {
             this.storedItems = new ArrayList<>();
-            for (StackWithSlot item : list) {
+            for (ItemStackWithSlot item : list) {
                 this.storedItems.add(item);
             }
         });
-        this.storedXp = view.getInt("StoredXp", 0);
+        this.storedXp = view.getIntOr("StoredXp", 0);
     }
 }

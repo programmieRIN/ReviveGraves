@@ -1,41 +1,40 @@
 package de.programmierin.revivegraves.mixin.client;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.command.OrderedRenderCommandQueue;
-import net.minecraft.client.render.entity.ChickenEntityRenderer;
-import net.minecraft.client.render.entity.EntityRenderManager;
-import net.minecraft.client.render.entity.EntityRenderer;
-import net.minecraft.client.render.entity.LivingEntityRenderer;
-import net.minecraft.client.render.entity.state.ChickenEntityRenderState;
-import net.minecraft.client.render.entity.state.LivingEntityRenderState;
-import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
-import net.minecraft.client.render.state.CameraRenderState;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.passive.ChickenVariant;
-import net.minecraft.entity.passive.ChickenVariants;
-import net.minecraft.registry.RegistryKeys;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.ChickenRenderer;
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.state.ChickenRenderState;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.entity.state.AvatarRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.animal.chicken.ChickenVariants;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Intercepts LivingEntityRenderer.render to replace ghost chicken players
+ * Intercepts LivingEntityRenderer.submit to replace ghost chicken players
  * with an actual chicken model when viewed in F5 mode.
  */
 @Mixin(LivingEntityRenderer.class)
 public class LivingEntityRendererMixin {
 
-    @Inject(method = "render(Lnet/minecraft/client/render/entity/state/LivingEntityRenderState;Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/command/OrderedRenderCommandQueue;Lnet/minecraft/client/render/state/CameraRenderState;)V", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "submit(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V", at = @At("HEAD"), cancellable = true)
     private void revivegraves$renderGhostChicken(
             LivingEntityRenderState state,
-            MatrixStack matrices,
-            OrderedRenderCommandQueue queue,
+            PoseStack matrices,
+            SubmitNodeCollector queue,
             CameraRenderState cameraState,
             CallbackInfo ci
     ) {
-        if (!(state instanceof PlayerEntityRenderState playerState)) {
+        if (!(state instanceof AvatarRenderState playerState)) {
             return;
         }
 
@@ -43,68 +42,67 @@ public class LivingEntityRendererMixin {
             return;
         }
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.world == null) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.level == null) {
             return;
         }
 
-        // Get the chicken renderer from the entity render manager
-        EntityRenderManager renderManager = client.getEntityRenderDispatcher();
+        // Get the chicken renderer from the entity render dispatcher
+        EntityRenderDispatcher renderManager = client.getEntityRenderDispatcher();
         EntityRenderer<?, ?> renderer = ((EntityRenderManagerAccessor) renderManager).revivegraves$getRenderers().get(EntityType.CHICKEN);
 
-        if (!(renderer instanceof ChickenEntityRenderer chickenRenderer)) {
+        if (!(renderer instanceof ChickenRenderer chickenRenderer)) {
             return;
         }
 
-        // Build a ChickenEntityRenderState with position/rotation from the player
-        ChickenEntityRenderState chickenState = new ChickenEntityRenderState();
+        // Build a ChickenRenderState with position/rotation from the player
+        ChickenRenderState chickenState = new ChickenRenderState();
         // Base EntityRenderState fields
         chickenState.x = state.x;
         chickenState.y = state.y;
         chickenState.z = state.z;
-        chickenState.age = state.age;
-        chickenState.light = state.light;
-        chickenState.invisible = false;
-        chickenState.sneaking = state.sneaking;
-        chickenState.width = 0.4f;
-        chickenState.height = 0.7f;
-        chickenState.squaredDistanceToCamera = state.squaredDistanceToCamera;
+        chickenState.ageInTicks = state.ageInTicks;
+        chickenState.lightCoords = state.lightCoords;
+        chickenState.isInvisible = false;
+        chickenState.boundingBoxWidth = 0.4f;
+        chickenState.boundingBoxHeight = 0.7f;
+        chickenState.distanceToCameraSq = state.distanceToCameraSq;
         chickenState.shadowRadius = 0.3f;
 
         // LivingEntityRenderState fields — animation
-        chickenState.bodyYaw = state.bodyYaw;
-        chickenState.relativeHeadYaw = state.relativeHeadYaw;
-        chickenState.pitch = state.pitch;
-        chickenState.limbSwingAnimationProgress = state.limbSwingAnimationProgress;
-        chickenState.limbSwingAmplitude = state.limbSwingAmplitude;
+        chickenState.bodyRot = state.bodyRot;
+        chickenState.yRot = state.yRot;
+        chickenState.xRot = state.xRot;
+        chickenState.walkAnimationPos = state.walkAnimationPos;
+        chickenState.walkAnimationSpeed = state.walkAnimationSpeed;
         // In inventory screens, use the player's actual scale (0.389) so the
         // inventory's entity-fitting logic produces a correctly sized chicken.
         // In-world (F5), use 1.0 for a normal-sized chicken model.
-        boolean isInventoryRender = client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.HandledScreen;
-        chickenState.baseScale = isInventoryRender ? state.baseScale : 1.0f;
+        boolean isInventoryRender = client.screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+        chickenState.scale = isInventoryRender ? state.scale : 1.0f;
         chickenState.ageScale = 1.0f;
-        chickenState.baby = false;
+        chickenState.isBaby = false;
 
-        // ChickenEntityRenderState fields — wing flap animation
+        // ChickenRenderState fields — wing flap animation
         // Simulate gentle wing flap based on age (time)
         float flapSpeed = 0.6f;
         float flapAmount = 0.3f;
-        if (state.limbSwingAmplitude > 0.01f) {
+        if (state.walkAnimationSpeed > 0.01f) {
             // Walking — flap more
             flapSpeed = 1.0f;
             flapAmount = 0.5f;
         }
-        chickenState.flapProgress = state.age * flapSpeed;
-        chickenState.maxWingDeviation = flapAmount;
+        chickenState.flap = state.ageInTicks * flapSpeed;
+        chickenState.flapSpeed = flapAmount;
 
-        // Set the chicken variant - required for rendering (ChickenEntityRenderer returns early if null)
-        client.world.getRegistryManager()
-                .getOrThrow(RegistryKeys.CHICKEN_VARIANT)
+        // Set the chicken variant - required for rendering (ChickenRenderer returns early if null)
+        client.level.registryAccess()
+                .lookupOrThrow(Registries.CHICKEN_VARIANT)
                 .getOptional(ChickenVariants.TEMPERATE)
-                .ifPresent(entry -> chickenState.variant = entry.value());
+                .ifPresent(variant -> chickenState.variant = variant);
 
         // Render the chicken instead of the player
-        chickenRenderer.render(chickenState, matrices, queue, cameraState);
+        chickenRenderer.submit(chickenState, matrices, queue, cameraState);
         ci.cancel();
     }
 }

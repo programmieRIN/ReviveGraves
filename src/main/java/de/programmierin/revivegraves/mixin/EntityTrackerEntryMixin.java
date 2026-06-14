@@ -1,19 +1,19 @@
 package de.programmierin.revivegraves.mixin;
 
 import de.programmierin.revivegraves.ghost.GhostChickenState;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.EntityAttributeInstance;
-import net.minecraft.entity.data.DataTracker;
-import net.minecraft.network.listener.ClientPlayPacketListener;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.s2c.play.EntityAttributesS2CPacket;
-import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
-import net.minecraft.network.packet.s2c.play.EntityTrackerUpdateS2CPacket;
-import net.minecraft.server.network.EntityTrackerEntry;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundUpdateAttributesPacket;
+import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
+import net.minecraft.server.level.ServerEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -28,79 +28,79 @@ import java.util.function.Consumer;
 
 /**
  * Intercepts entity tracking to disguise ghost players as chickens.
- * - sendPackets: replaces player spawn with chicken spawn for other clients
- * - syncEntityData: prevents player DataTracker fields from reaching clients
- *   that have a ChickenEntity (would cause type mismatch crash)
+ * - sendPairingData: replaces player spawn with chicken spawn for other clients
+ * - sendDirtyEntityData: prevents player SynchedEntityData fields from reaching clients
+ *   that have a Chicken (would cause type mismatch crash)
  */
-@Mixin(EntityTrackerEntry.class)
+@Mixin(ServerEntity.class)
 public abstract class EntityTrackerEntryMixin {
 
     @Shadow @Final private Entity entity;
-    @Shadow @Nullable private List<DataTracker.SerializedEntry<?>> changedEntries;
+    @Shadow @Nullable private List<SynchedEntityData.DataValue<?>> trackedDataValues;
 
-    @Inject(method = "sendPackets", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "sendPairingData", at = @At("HEAD"), cancellable = true)
     private void revivegraves$disguiseGhostChicken(
-            ServerPlayerEntity player,
-            Consumer<Packet<ClientPlayPacketListener>> sender,
+            ServerPlayer player,
+            Consumer<Packet<ClientGamePacketListener>> sender,
             CallbackInfo ci
     ) {
-        if (!(entity instanceof ServerPlayerEntity ghostPlayer)) return;
-        if (!(ghostPlayer.getEntityWorld() instanceof ServerWorld serverWorld)) return;
+        if (!(entity instanceof ServerPlayer ghostPlayer)) return;
+        if (!(ghostPlayer.level() instanceof ServerLevel serverWorld)) return;
 
         GhostChickenState state = GhostChickenState.get(serverWorld.getServer());
-        if (!state.isGhost(ghostPlayer.getUuid())) return;
+        if (!state.isGhost(ghostPlayer.getUUID())) return;
 
         // Don't disguise packets sent to the ghost player themselves
-        if (player.getUuid().equals(ghostPlayer.getUuid())) return;
+        if (player.getUUID().equals(ghostPlayer.getUUID())) return;
 
         ci.cancel();
 
         // Send a chicken spawn packet instead of a player spawn packet
-        EntitySpawnS2CPacket spawnPacket = new EntitySpawnS2CPacket(
-                ghostPlayer.getId(), ghostPlayer.getUuid(),
+        ClientboundAddEntityPacket spawnPacket = new ClientboundAddEntityPacket(
+                ghostPlayer.getId(), ghostPlayer.getUUID(),
                 ghostPlayer.getX(), ghostPlayer.getY(), ghostPlayer.getZ(),
-                ghostPlayer.getPitch(), ghostPlayer.getYaw(),
+                ghostPlayer.getXRot(), ghostPlayer.getYRot(),
                 EntityType.CHICKEN, 0,
-                ghostPlayer.getVelocity(), (double) ghostPlayer.getHeadYaw()
+                ghostPlayer.getDeltaMovement(), (double) ghostPlayer.getYHeadRot()
         );
         sender.accept(spawnPacket);
 
         // Send empty tracker data so the client uses chicken defaults
-        sender.accept(new EntityTrackerUpdateS2CPacket(ghostPlayer.getId(), List.of()));
+        sender.accept(new ClientboundSetEntityDataPacket(ghostPlayer.getId(), List.of()));
     }
 
     /**
-     * Intercepts dirty DataTracker sync to prevent player-specific fields from being
-     * broadcast to clients that have a ChickenEntity. Sends tracker data only to the
+     * Intercepts dirty SynchedEntityData sync to prevent player-specific fields from being
+     * broadcast to clients that have a Chicken. Sends tracker data only to the
      * ghost player's own client. This prevents the field type mismatch crash
-     * (e.g., PlayerEntity field 16 Byte vs ChickenEntity field 16 Boolean).
+     * (e.g., Player field 16 Byte vs Chicken field 16 Boolean).
      */
-    @Inject(method = "syncEntityData", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "sendDirtyEntityData", at = @At("HEAD"), cancellable = true)
     private void revivegraves$suppressGhostDataSync(CallbackInfo ci) {
-        if (!(entity instanceof ServerPlayerEntity ghostPlayer)) return;
-        if (!(ghostPlayer.getEntityWorld() instanceof ServerWorld serverWorld)) return;
+        if (!(entity instanceof ServerPlayer ghostPlayer)) return;
+        if (!(ghostPlayer.level() instanceof ServerLevel serverWorld)) return;
 
         GhostChickenState state = GhostChickenState.get(serverWorld.getServer());
-        if (!state.isGhost(ghostPlayer.getUuid())) return;
+        if (!state.isGhost(ghostPlayer.getUUID())) return;
 
         ci.cancel();
 
-        // Still sync dirty DataTracker entries to the ghost's own client
-        // Order matters: getChangedEntries() must be called before getDirtyEntries()
-        // because getDirtyEntries() resets the dirty flags
-        DataTracker dataTracker = entity.getDataTracker();
-        this.changedEntries = dataTracker.getChangedEntries();
-        List<DataTracker.SerializedEntry<?>> dirtyEntries = dataTracker.getDirtyEntries();
+        // Still sync dirty SynchedEntityData entries to the ghost's own client
+        // Order matters: getNonDefaultValues() must be called before packDirty()
+        // because packDirty() resets the dirty flags
+        SynchedEntityData entityData = entity.getEntityData();
+        this.trackedDataValues = entityData.getNonDefaultValues();
+        List<SynchedEntityData.DataValue<?>> dirtyEntries = entityData.packDirty();
         if (dirtyEntries != null) {
-            ghostPlayer.networkHandler.sendPacket(
-                    new EntityTrackerUpdateS2CPacket(entity.getId(), dirtyEntries));
+            ghostPlayer.connection.send(
+                    new ClientboundSetEntityDataPacket(entity.getId(), dirtyEntries));
         }
 
         // Also sync attributes only to self (player attributes differ from chicken)
-        Set<EntityAttributeInstance> tracked = ((LivingEntity) entity).getAttributes().getTracked();
+        Set<AttributeInstance> tracked = ((LivingEntity) entity).getAttributes().getAttributesToSync();
         if (!tracked.isEmpty()) {
-            ghostPlayer.networkHandler.sendPacket(
-                    new EntityAttributesS2CPacket(entity.getId(), tracked));
+            ghostPlayer.connection.send(
+                    new ClientboundUpdateAttributesPacket(entity.getId(), tracked));
             tracked.clear();
         }
     }

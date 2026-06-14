@@ -1,5 +1,6 @@
 plugins {
-	id 'fabric-loom' version "${loom_version}"
+	// 26.1+ uses the non-remapping Loom plugin (game is unobfuscated)
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 	id 'maven-publish'
 }
 
@@ -30,12 +31,10 @@ fabricApi {
 
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	// 26.1+ is unobfuscated: no mappings dependency, Loom does not remap Minecraft or mods
 
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
-	compileOnly "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 }
 
 
@@ -48,7 +47,7 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
+	it.options.release = 25
 }
 
 java {
@@ -57,8 +56,14 @@ java {
 	// If you remove this line, sources will not be generated.
 	withSourcesJar()
 
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
+	// MC 26.1.2 requires Java 25. Toolchain auto-downloads JDK 25 via foojay resolver
+	// so the build does not depend on a locally installed JDK 25.
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
 }
 
 jar {

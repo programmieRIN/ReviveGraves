@@ -1,31 +1,32 @@
 package de.programmierin.revivegraves.client;
 
 import de.programmierin.revivegraves.entity.GravestoneBlockEntity;
-import net.minecraft.block.HorizontalFacingBlock;
-import net.minecraft.block.SkullBlock;
-import net.minecraft.client.render.block.entity.BlockEntityRenderer;
-import net.minecraft.client.render.block.entity.BlockEntityRendererFactory;
-import net.minecraft.client.render.block.entity.SkullBlockEntityModel;
-import net.minecraft.client.render.block.entity.SkullBlockEntityRenderer;
-import net.minecraft.client.render.command.ModelCommandRenderer;
-import net.minecraft.client.render.command.OrderedRenderCommandQueue;
-import net.minecraft.client.render.state.CameraRenderState;
-import net.minecraft.client.texture.PlayerSkinCache;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.model.object.skull.SkullModelBase;
+import net.minecraft.client.renderer.PlayerSkinRenderCache;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.SkullBlockRenderer;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraft.world.level.block.SkullBlock;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.UUID;
 
 public class GravestoneBlockEntityRenderer
         implements BlockEntityRenderer<GravestoneBlockEntity, GravestoneBlockEntityRenderState> {
 
-    private final SkullBlockEntityModel skullModel;
-    private final PlayerSkinCache skinCache;
+    private final SkullModelBase skullModel;
+    private final PlayerSkinRenderCache skinCache;
 
-    public GravestoneBlockEntityRenderer(BlockEntityRendererFactory.Context ctx) {
-        this.skullModel = SkullBlockEntityRenderer.getModels(
-                ctx.loadedEntityModels(), SkullBlock.Type.PLAYER);
+    public GravestoneBlockEntityRenderer(BlockEntityRendererProvider.Context ctx) {
+        this.skullModel = SkullBlockRenderer.createModel(
+                ctx.entityModelSet(), SkullBlock.Types.PLAYER);
         this.skinCache = ctx.playerSkinRenderCache();
     }
 
@@ -35,36 +36,38 @@ public class GravestoneBlockEntityRenderer
     }
 
     @Override
-    public void updateRenderState(GravestoneBlockEntity entity,
-                                  GravestoneBlockEntityRenderState state,
-                                  float tickDelta,
-                                  Vec3d cameraPos,
-                                  ModelCommandRenderer.CrumblingOverlayCommand crumbling) {
-        BlockEntityRenderer.super.updateRenderState(entity, state, tickDelta, cameraPos, crumbling);
+    public void extractRenderState(GravestoneBlockEntity entity,
+                                   GravestoneBlockEntityRenderState state,
+                                   float tickDelta,
+                                   Vec3 cameraPos,
+                                   ModelFeatureRenderer.CrumblingOverlay crumbling) {
+        BlockEntityRenderer.super.extractRenderState(entity, state, tickDelta, cameraPos, crumbling);
 
         UUID ownerUuid = entity.getOwner();
 
-        state.facing = entity.getCachedState().get(HorizontalFacingBlock.FACING);
+        state.facing = entity.getBlockState().getValue(HorizontalDirectionalBlock.FACING);
 
         // Always render a skull when the gravestone block exists.
         // Use vanilla's cutout render layer (Steve default skin).
         // ownerUuid may be null if BlockEntity data hasn't synced to this client yet.
-        state.skullRenderLayer = SkullBlockEntityRenderer.getCutoutRenderLayer(
-                SkullBlock.Type.PLAYER, null);
+        state.skullRenderLayer = SkullBlockRenderer.getSkullRenderType(
+                SkullBlock.Types.PLAYER, null);
     }
 
     @Override
-    public void render(GravestoneBlockEntityRenderState state,
-                       MatrixStack matrices,
-                       OrderedRenderCommandQueue renderQueue,
+    public void submit(GravestoneBlockEntityRenderState state,
+                       PoseStack matrices,
+                       SubmitNodeCollector renderQueue,
                        CameraRenderState camera) {
         if (state.skullRenderLayer == null) return;
 
         Direction facing = state.facing;
 
-        matrices.push();
+        matrices.pushPose();
 
-        // SkullBlockEntityRenderer.render(null, yaw) internally does translate(0.5, 0, 0.5) + scale(-1,-1,1).
+        // In 26.1.2, submitSkull no longer applies the skull base transform — the vanilla
+        // renderer does it via mulPose(transformation). We replicate it here to preserve the
+        // original visual: translate(0.5, 0, 0.5) + rotate(yaw) + scale(-1,-1,1).
         // We pre-translate to compensate: tx = nicheX - 0.5*scale, tz = nicheZ - 0.5*scale
 
         float nicheDepth = 6.95f / 16f; // just in front of back wall to avoid Z-fighting
@@ -87,12 +90,18 @@ public class GravestoneBlockEntityRenderer
         matrices.translate(tx, ty, tz);
         matrices.scale(scale, scale, scale);
 
-        SkullBlockEntityRenderer.render(
-                null, yRot, 0f, matrices, renderQueue,
-                state.lightmapCoordinates, skullModel,
-                state.skullRenderLayer, 0, state.crumblingOverlay
+        // Replicate the skull base transform that the vanilla SkullBlockRenderer applies
+        // via the block-state transformation (previously done inside the old render() call).
+        matrices.translate(0.5f, 0.0f, 0.5f);
+        matrices.mulPose(Axis.YP.rotationDegrees(yRot));
+        matrices.scale(-1.0f, -1.0f, 1.0f);
+
+        SkullBlockRenderer.submitSkull(
+                0f, matrices, renderQueue,
+                state.lightCoords, skullModel,
+                state.skullRenderLayer, 0, state.breakProgress
         );
 
-        matrices.pop();
+        matrices.popPose();
     }
 }

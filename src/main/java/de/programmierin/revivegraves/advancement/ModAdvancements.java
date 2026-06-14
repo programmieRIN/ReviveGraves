@@ -1,14 +1,14 @@
 package de.programmierin.revivegraves.advancement;
 
 import de.programmierin.revivegraves.ReviveGraves;
-import net.minecraft.advancement.Advancement;
-import net.minecraft.advancement.AdvancementDisplay;
-import net.minecraft.advancement.AdvancementEntry;
-import net.minecraft.advancement.AdvancementProgress;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.AdvancementProgress;
+import net.minecraft.advancements.DisplayInfo;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Advancement ID constants and helper methods for granting advancements.
@@ -16,14 +16,14 @@ import net.minecraft.util.Identifier;
 public class ModAdvancements {
 
 	// Advancement IDs
-	public static final Identifier ROOT = Identifier.of(ReviveGraves.MOD_ID, "root");
-	public static final Identifier EMERGENCY_SUPPLIES = Identifier.of(ReviveGraves.MOD_ID, "emergency_supplies");
-	public static final Identifier FIRST_FALL = Identifier.of(ReviveGraves.MOD_ID, "first_fall");
-	public static final Identifier FREQUENT_FLYER = Identifier.of(ReviveGraves.MOD_ID, "frequent_flyer");
-	public static final Identifier LINGERING_SPIRIT = Identifier.of(ReviveGraves.MOD_ID, "lingering_spirit");
-	public static final Identifier ETERNAL_HAUNTING = Identifier.of(ReviveGraves.MOD_ID, "eternal_haunting");
-	public static final Identifier HELPING_HAND = Identifier.of(ReviveGraves.MOD_ID, "helping_hand");
-	public static final Identifier MEDIC = Identifier.of(ReviveGraves.MOD_ID, "medic");
+	public static final Identifier ROOT = Identifier.fromNamespaceAndPath(ReviveGraves.MOD_ID, "root");
+	public static final Identifier EMERGENCY_SUPPLIES = Identifier.fromNamespaceAndPath(ReviveGraves.MOD_ID, "emergency_supplies");
+	public static final Identifier FIRST_FALL = Identifier.fromNamespaceAndPath(ReviveGraves.MOD_ID, "first_fall");
+	public static final Identifier FREQUENT_FLYER = Identifier.fromNamespaceAndPath(ReviveGraves.MOD_ID, "frequent_flyer");
+	public static final Identifier LINGERING_SPIRIT = Identifier.fromNamespaceAndPath(ReviveGraves.MOD_ID, "lingering_spirit");
+	public static final Identifier ETERNAL_HAUNTING = Identifier.fromNamespaceAndPath(ReviveGraves.MOD_ID, "eternal_haunting");
+	public static final Identifier HELPING_HAND = Identifier.fromNamespaceAndPath(ReviveGraves.MOD_ID, "helping_hand");
+	public static final Identifier MEDIC = Identifier.fromNamespaceAndPath(ReviveGraves.MOD_ID, "medic");
 
 	// Ghost time thresholds in ticks
 	public static final long GHOST_TICKS_30_MIN = 30L * 60 * 20;      // 36,000
@@ -33,17 +33,17 @@ public class ModAdvancements {
 	 * Grants an advancement to a player if not already completed.
 	 * @return true if the advancement was newly granted
 	 */
-	public static boolean grant(ServerPlayerEntity player, Identifier advancementId) {
-		MinecraftServer server = player.getEntityWorld().getServer();
+	public static boolean grant(ServerPlayer player, Identifier advancementId) {
+		MinecraftServer server = player.level().getServer();
 		if (server == null) return false;
 
-		AdvancementEntry advancementEntry = server.getAdvancementLoader().get(advancementId);
+		AdvancementHolder advancementEntry = server.getAdvancements().get(advancementId);
 		if (advancementEntry == null) return false;
 
-		AdvancementProgress progress = player.getAdvancementTracker().getProgress(advancementEntry);
+		AdvancementProgress progress = player.getAdvancements().getOrStartProgress(advancementEntry);
 		if (progress.isDone()) return false;
 
-		player.getAdvancementTracker().grantCriterion(advancementEntry, "granted");
+		player.getAdvancements().award(advancementEntry, "granted");
 		return true;
 	}
 
@@ -51,47 +51,47 @@ public class ModAdvancements {
 	 * Broadcasts an advancement chat announcement manually.
 	 * Used for advancements granted during JOIN where vanilla's announcement doesn't fire.
 	 */
-	public static void announceAdvancement(ServerPlayerEntity player, Identifier advancementId) {
-		MinecraftServer server = player.getEntityWorld().getServer();
+	public static void announceAdvancement(ServerPlayer player, Identifier advancementId) {
+		MinecraftServer server = player.level().getServer();
 		if (server == null) return;
 
-		AdvancementEntry advancementEntry = server.getAdvancementLoader().get(advancementId);
+		AdvancementHolder advancementEntry = server.getAdvancements().get(advancementId);
 		if (advancementEntry == null) return;
 
-		AdvancementDisplay display = advancementEntry.value().display().orElse(null);
-		if (display == null || !display.shouldAnnounceToChat()) return;
+		DisplayInfo display = advancementEntry.value().display().orElse(null);
+		if (display == null || !display.shouldAnnounceChat()) return;
 
-		String translationKey = switch (display.getFrame()) {
+		String translationKey = switch (display.getType()) {
 			case GOAL -> "chat.type.advancement.goal";
 			case CHALLENGE -> "chat.type.advancement.challenge";
 			default -> "chat.type.advancement.task";
 		};
 		// Use vanilla's formatted text (brackets + hover with description)
-		Text advancementText = Advancement.getNameFromIdentity(advancementEntry);
-		Text message = Text.translatable(translationKey, player.getDisplayName(), advancementText);
-		for (ServerPlayerEntity onlinePlayer : server.getPlayerManager().getPlayerList()) {
-			onlinePlayer.sendMessage(message, false);
+		Component advancementText = Advancement.name(advancementEntry);
+		Component message = Component.translatable(translationKey, player.getDisplayName(), advancementText);
+		for (ServerPlayer onlinePlayer : server.getPlayerList().getPlayers()) {
+			onlinePlayer.sendSystemMessage(message, false);
 		}
 	}
 
 	/**
 	 * Checks if a player has already completed an advancement.
 	 */
-	public static boolean isGranted(ServerPlayerEntity player, Identifier advancementId) {
-		MinecraftServer server = player.getEntityWorld().getServer();
+	public static boolean isGranted(ServerPlayer player, Identifier advancementId) {
+		MinecraftServer server = player.level().getServer();
 		if (server == null) return false;
 
-		AdvancementEntry advancementEntry = server.getAdvancementLoader().get(advancementId);
+		AdvancementHolder advancementEntry = server.getAdvancements().get(advancementId);
 		if (advancementEntry == null) return false;
 
-		return player.getAdvancementTracker().getProgress(advancementEntry).isDone();
+		return player.getAdvancements().getOrStartProgress(advancementEntry).isDone();
 	}
 
 	/**
 	 * Checks and grants death-related advancements based on current stats.
 	 */
-	public static void checkDeathAdvancements(ServerPlayerEntity player, PlayerStatsState statsState) {
-		int deaths = statsState.getStats(player.getUuid()).deathCount();
+	public static void checkDeathAdvancements(ServerPlayer player, PlayerStatsState statsState) {
+		int deaths = statsState.getStats(player.getUUID()).deathCount();
 		if (deaths >= 1) grant(player, FIRST_FALL);
 		if (deaths >= 5) grant(player, FREQUENT_FLYER);
 	}
@@ -99,8 +99,8 @@ public class ModAdvancements {
 	/**
 	 * Checks and grants revive-related advancements based on current stats.
 	 */
-	public static void checkReviveAdvancements(ServerPlayerEntity player, PlayerStatsState statsState) {
-		int revives = statsState.getStats(player.getUuid()).reviveCount();
+	public static void checkReviveAdvancements(ServerPlayer player, PlayerStatsState statsState) {
+		int revives = statsState.getStats(player.getUUID()).reviveCount();
 		if (revives >= 1) grant(player, HELPING_HAND);
 		if (revives >= 5) grant(player, MEDIC);
 	}
@@ -108,8 +108,8 @@ public class ModAdvancements {
 	/**
 	 * Checks and grants ghost time advancements based on cumulative ghost ticks.
 	 */
-	public static void checkGhostTimeAdvancements(ServerPlayerEntity player, PlayerStatsState statsState) {
-		long ghostTicks = statsState.getStats(player.getUuid()).ghostTicks();
+	public static void checkGhostTimeAdvancements(ServerPlayer player, PlayerStatsState statsState) {
+		long ghostTicks = statsState.getStats(player.getUUID()).ghostTicks();
 		if (ghostTicks >= GHOST_TICKS_30_MIN) grant(player, LINGERING_SPIRIT);
 		if (ghostTicks >= GHOST_TICKS_2_HOURS) grant(player, ETERNAL_HAUNTING);
 	}
