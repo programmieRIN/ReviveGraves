@@ -59,9 +59,9 @@ public class ModAdvancements {
 		if (advancementEntry == null) return;
 
 		DisplayInfo display = advancementEntry.value().display().orElse(null);
-		if (display == null || !display.shouldAnnounceChat()) return;
+		if (display == null || !display.announceToChat()) return;
 
-		String translationKey = switch (display.getType()) {
+		String translationKey = switch (display.type()) {
 			case GOAL -> "chat.type.advancement.goal";
 			case CHALLENGE -> "chat.type.advancement.challenge";
 			default -> "chat.type.advancement.task";

@@ -2,7 +2,7 @@ package de.programmierin.revivegraves.mixin;
 
 import de.programmierin.revivegraves.ghost.GhostChickenState;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -60,7 +60,7 @@ public abstract class EntityTrackerEntryMixin {
                 ghostPlayer.getId(), ghostPlayer.getUUID(),
                 ghostPlayer.getX(), ghostPlayer.getY(), ghostPlayer.getZ(),
                 ghostPlayer.getXRot(), ghostPlayer.getYRot(),
-                EntityType.CHICKEN, 0,
+                EntityTypes.CHICKEN, 0,
                 ghostPlayer.getDeltaMovement(), (double) ghostPlayer.getYHeadRot()
         );
         sender.accept(spawnPacket);

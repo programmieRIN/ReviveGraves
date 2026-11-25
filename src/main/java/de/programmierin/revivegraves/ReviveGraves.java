@@ -471,7 +471,7 @@ public class ReviveGraves implements ModInitializer {
 						net.minecraft.world.item.ItemStack tokens = new net.minecraft.world.item.ItemStack(
 								ModItems.REVIVE_TOKEN, amount);
 						if (!player.getInventory().add(tokens)) {
-							player.drop(tokens, false);
+							player.drop(tokens, false, net.minecraft.util.Prediction.SERVER_ONLY);
 						}
 						LOGGER.info("Granted {} start tokens to new player {}",
 								amount, player.getGameProfile().name());

@@ -56,7 +56,7 @@ java {
 	// If you remove this line, sources will not be generated.
 	withSourcesJar()
 
-	// MC 26.1.2 requires Java 25. Toolchain auto-downloads JDK 25 via foojay resolver
+	// MC 26.x requires Java 25. Toolchain auto-downloads JDK 25 via foojay resolver
 	// so the build does not depend on a locally installed JDK 25.
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(25)

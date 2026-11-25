@@ -1,6 +1,5 @@
 package de.programmierin.revivegraves.block.custom;
 
-import com.mojang.serialization.MapCodec;
 import de.programmierin.revivegraves.ReviveGraves;
 import de.programmierin.revivegraves.advancement.ModAdvancements;
 import de.programmierin.revivegraves.advancement.PlayerStatsState;
@@ -15,6 +14,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Prediction;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemStackWithSlot;
 import net.minecraft.world.entity.player.Player;
@@ -38,7 +38,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 public class GravestoneBlock extends HorizontalDirectionalBlock implements EntityBlock {
-    public static final MapCodec<GravestoneBlock> CODEC = simpleCodec(GravestoneBlock::new);
     private static final VoxelShape SHAPE = Block.box(2.0, 0.0, 4.0, 14.0, 16.0, 13.0);
 
     public GravestoneBlock(BlockBehaviour.Properties settings) {
@@ -55,11 +54,6 @@ public class GravestoneBlock extends HorizontalDirectionalBlock implements Entit
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
         return SHAPE;
-    }
-
-    @Override
-    protected MapCodec<? extends HorizontalDirectionalBlock> codec() {
-        return CODEC;
     }
 
     @Nullable
@@ -142,7 +136,7 @@ public class GravestoneBlock extends HorizontalDirectionalBlock implements Entit
                     if (item.slot() >= 0 && item.slot() < dead.getInventory().getContainerSize()) {
                         dead.getInventory().setItem(item.slot(), item.stack().copy());
                     } else {
-                        dead.drop(item.stack().copy(), false);
+                        dead.drop(item.stack().copy(), false, Prediction.SERVER_ONLY);
                     }
                 }
             }

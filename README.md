@@ -3,7 +3,7 @@
 
 # ReviveGraves
 
-**ReviveGraves** (Fabric 26.1.2) adds cooperative rescue mechanics to your Minecraft server.
+**ReviveGraves** (Fabric 26.3) adds cooperative rescue mechanics to your Minecraft server.
 
 ---
 
@@ -34,7 +34,7 @@
 
 ## Installation
 
-1. Install [Fabric Loader](https://fabricmc.net/) and [Fabric API](https://modrinth.com/mod/fabric-api) for Minecraft 26.1.2
+1. Install [Fabric Loader](https://fabricmc.net/) and [Fabric API](https://modrinth.com/mod/fabric-api) for Minecraft 26.3
 2. Download the latest ReviveGraves JAR from [Modrinth](https://modrinth.com/mod/revivegraves) or [Releases](../../releases)
 3. Place the JAR in your `mods/` folder
 4. Launch the game

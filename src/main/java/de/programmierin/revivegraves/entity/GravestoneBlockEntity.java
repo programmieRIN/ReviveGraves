@@ -8,6 +8,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityProcessor;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntitySpawnRequest;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.ItemStackWithSlot;
 import net.minecraft.nbt.CompoundTag;
@@ -138,7 +139,7 @@ public class GravestoneBlockEntity extends BlockEntity {
         tag.putBoolean("NoBasePlate", true);
         tag.putBoolean("Marker", true);
 
-        Entity loaded = EntityType.loadEntityRecursive(tag, world, EntitySpawnReason.TRIGGERED, EntityProcessor.NOP);
+        Entity loaded = EntityType.loadEntityRecursive(tag, world, new EntitySpawnRequest(EntitySpawnReason.TRIGGERED, false), EntityProcessor.NOP);
         if (!(loaded instanceof ArmorStand stand)) return;
 
         stand.setCustomName(Component.literal(name));

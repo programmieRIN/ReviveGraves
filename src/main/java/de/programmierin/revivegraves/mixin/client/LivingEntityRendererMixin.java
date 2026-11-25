@@ -12,7 +12,7 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.animal.chicken.ChickenVariants;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -49,7 +49,7 @@ public class LivingEntityRendererMixin {
 
         // Get the chicken renderer from the entity render dispatcher
         EntityRenderDispatcher renderManager = client.getEntityRenderDispatcher();
-        EntityRenderer<?, ?> renderer = ((EntityRenderManagerAccessor) renderManager).revivegraves$getRenderers().get(EntityType.CHICKEN);
+        EntityRenderer<?, ?> renderer = ((EntityRenderManagerAccessor) renderManager).revivegraves$getRenderers().get(EntityTypes.CHICKEN);
 
         if (!(renderer instanceof ChickenRenderer chickenRenderer)) {
             return;
@@ -78,7 +78,7 @@ public class LivingEntityRendererMixin {
         // In inventory screens, use the player's actual scale (0.389) so the
         // inventory's entity-fitting logic produces a correctly sized chicken.
         // In-world (F5), use 1.0 for a normal-sized chicken model.
-        boolean isInventoryRender = client.screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+        boolean isInventoryRender = client.gui.screen() instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
         chickenState.scale = isInventoryRender ? state.scale : 1.0f;
         chickenState.ageScale = 1.0f;
         chickenState.isBaby = false;

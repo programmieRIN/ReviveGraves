@@ -10,6 +10,6 @@ pluginManagement {
 }
 
 plugins {
-	// Auto-provisions JDK toolchains (e.g. Java 25 required by MC 26.1.2)
+	// Auto-provisions JDK toolchains (e.g. Java 25 required by MC 26.x)
 	id 'org.gradle.toolchains.foojay-resolver-convention' version '0.9.0'
 }

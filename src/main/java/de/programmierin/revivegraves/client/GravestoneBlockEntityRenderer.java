@@ -93,7 +93,7 @@ public class GravestoneBlockEntityRenderer
         // Replicate the skull base transform that the vanilla SkullBlockRenderer applies
         // via the block-state transformation (previously done inside the old render() call).
         matrices.translate(0.5f, 0.0f, 0.5f);
-        matrices.mulPose(Axis.YP.rotationDegrees(yRot));
+        matrices.rotate(Axis.YP.rotationDegrees(yRot));
         matrices.scale(-1.0f, -1.0f, 1.0f);
 
         SkullBlockRenderer.submitSkull(

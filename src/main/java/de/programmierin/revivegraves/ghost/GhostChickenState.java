@@ -166,7 +166,7 @@ public class GhostChickenState extends SavedData {
      */
     public static void applyGhostState(ServerPlayer player) {
         player.setGameMode(GameType.ADVENTURE);
-        player.setInvulnerable(true);
+        player.setPermanentlyInvulnerable(true);
 
         player.addEffect(new MobEffectInstance(
                 MobEffects.INVISIBILITY,
@@ -238,7 +238,7 @@ public class GhostChickenState extends SavedData {
      * Removes ghost state from a player: removes invulnerability, invisibility, and speed modifier.
      */
     public static void removeGhostState(ServerPlayer player) {
-        player.setInvulnerable(false);
+        player.setPermanentlyInvulnerable(false);
         player.removeEffect(MobEffects.INVISIBILITY);
         player.removeEffect(MobEffects.SLOW_FALLING);
 

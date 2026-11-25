@@ -9,9 +9,9 @@ import net.fabricmc.fabric.api.datagen.v1.provider.FabricAdvancementProvider;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementType;
-import net.minecraft.advancements.Criterion;
-import net.minecraft.advancements.CriteriaTriggers;
-import net.minecraft.advancements.criterion.ImpossibleTrigger;
+import net.minecraft.advancements.triggers.CriteriaTriggers;
+import net.minecraft.advancements.triggers.Criterion;
+import net.minecraft.advancements.triggers.ImpossibleTrigger;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -31,7 +31,7 @@ public class ModAdvancementProvider extends FabricAdvancementProvider {
 	public void generateAdvancement(HolderLookup.Provider wrapperLookup, Consumer<AdvancementHolder> consumer) {
 		// Root — creates the mod tab with soul sand background
 		AdvancementHolder root = Advancement.Builder.advancement()
-				.display(
+				.rootDisplay(
 						ModBlocks.GRAVESTONE_ITEM,
 						Component.translatable("advancements.revivegraves.root.title"),
 						Component.translatable("advancements.revivegraves.root.description"),
@@ -42,7 +42,8 @@ public class ModAdvancementProvider extends FabricAdvancementProvider {
 						false  // hidden
 				)
 				.addCriterion("granted", new Criterion<>(CriteriaTriggers.IMPOSSIBLE, new ImpossibleTrigger.TriggerInstance()))
-				.save(consumer, ModAdvancements.ROOT.toString());
+				.build(ModAdvancements.ROOT);
+		consumer.accept(root);
 
 		AdvancementHolder emergencySupplies = advancement(consumer, root, ModItems.REVIVE_TOKEN, ModAdvancements.EMERGENCY_SUPPLIES, AdvancementType.TASK);
 		AdvancementHolder firstFall = advancement(consumer, root, Items.SKELETON_SKULL, ModAdvancements.FIRST_FALL, AdvancementType.TASK);
@@ -56,13 +57,15 @@ public class ModAdvancementProvider extends FabricAdvancementProvider {
 	private static AdvancementHolder advancement(Consumer<AdvancementHolder> consumer,
 			AdvancementHolder parent, ItemLike icon, Identifier id, AdvancementType frame) {
 		String key = "advancements." + id.getNamespace() + "." + id.getPath();
-		return Advancement.Builder.advancement()
+		AdvancementHolder holder = Advancement.Builder.advancement()
 				.parent(parent)
-				.display(icon,
+				.display(icon.asItem(),
 						Component.translatable(key + ".title"),
 						Component.translatable(key + ".description"),
-						null, frame, true, true, false)
+						frame, true, true, false)
 				.addCriterion("granted", new Criterion<>(CriteriaTriggers.IMPOSSIBLE, new ImpossibleTrigger.TriggerInstance()))
-				.save(consumer, id.toString());
+				.build(id);
+		consumer.accept(holder);
+		return holder;
 	}
 }

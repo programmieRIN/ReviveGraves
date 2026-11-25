@@ -8,7 +8,7 @@ import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
 
 public class ModLootTableModifiers {
 	public static void register() {
@@ -18,7 +18,7 @@ public class ModLootTableModifiers {
 
 			if (BuiltInLootTables.END_CITY_TREASURE == key) {
 				tableBuilder.withPool(LootPool.lootPool()
-						.setRolls(ConstantValue.exactly(1))
+						.setRolls(ContextIntProviders.exactly(1))
 						.when(LootItemRandomChanceCondition.randomChance(ModConfig.INSTANCE.loot.endCityChance))
 						.add(LootItem.lootTableItem(ModItems.REVIVE_TOKEN))
 				);
@@ -28,7 +28,7 @@ public class ModLootTableModifiers {
 
 			if (BuiltInLootTables.TRIAL_CHAMBERS_REWARD_OMINOUS == key) {
 				tableBuilder.withPool(LootPool.lootPool()
-						.setRolls(ConstantValue.exactly(1))
+						.setRolls(ContextIntProviders.exactly(1))
 						.when(LootItemRandomChanceCondition.randomChance(ModConfig.INSTANCE.loot.ominousVaultChance))
 						.add(LootItem.lootTableItem(ModItems.REVIVE_TOKEN))
 				);
